@@ -102,13 +102,13 @@ void naughty(char* url){
       case '?':
         if(state < tag_query) {
           url[i] = tag_query;
-          state  = 6;
+          state  = tag_query;
         }
         break;
       case '#':
         if(state < tag_fragment) {
           url[i] = tag_fragment;
-          state = 7;
+          state  = tag_fragment;
         }
         break;
       default:
@@ -211,4 +211,57 @@ SEXP do_unnaughty(SEXP naughty_urls) {
   return naughty_urls;
 }
 
+SEXP vmatrix(SEXP naughty_urls, SEXP rows, SEXP cols) {
 
+  int n = XLENGTH(naughty_urls);
+  int N = XLENGTH(rows);
+  int P = XLENGTH(cols);
+
+  SEXP out = PROTECT(allocMatrix(STRSXP, N, P));
+
+  char buffer[1024*1024]; //sometimes data: URLS are big
+
+
+  for(int i = 0; i < N; i++){
+    int record = INTEGER(rows)[i] - 1;
+    int start = 0, end = 0;
+    int field;
+    const char* naughty_url = CHAR(STRING_ELT(naughty_urls, record));
+
+    if(naughty_url[0] == 0) continue; // blank URL
+
+    for(int j = 0; j < P; j++){
+      field = INTEGER(cols)[j];
+      //find beginning of field
+      if(field != tag_scheme){
+        while(naughty_url[start] && naughty_url[start] >= tag_skip) start++;
+        if(naughty_url[start] == 0) break;
+        if(naughty_url[start] != field) continue;
+        start = start + 1; //first non-thing character
+      }
+      if(naughty_url[start] == 0) break; //not found, end of url
+
+
+      //find end of field
+      end = start + 1;
+      while(naughty_url[end] > tag_skip) end++;
+      int field_length = end - start;
+
+      if(field_length > 0) {
+
+        memcpy(buffer, naughty_url + start, field_length);
+        buffer[field_length] = 0;
+        SET_STRING_ELT(out, i + j*N, mkChar(buffer));
+
+      }
+
+      if(naughty_url[end] == 0) break; //end of url
+      start = end;
+
+
+    }
+  }
+
+  UNPROTECT(1);
+  return out;
+}
