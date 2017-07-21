@@ -190,6 +190,10 @@ SEXP do_naughty(SEXP urls) {
     naughty((char *) url);
   }
 
+  SEXP nclass;
+  PROTECT(nclass = mkString("naughty"));
+  Rf_setAttrib(urls, R_ClassSymbol, nclass);
+  UNPROTECT(1);
 
   return urls;
 }
@@ -208,13 +212,15 @@ SEXP do_unnaughty(SEXP naughty_urls) {
     memcpy((char *) naughty_url, buffer, unnaughty_length);
   }
 
+  Rf_setAttrib(naughty_urls, R_ClassSymbol, R_NilValue);
+
   return naughty_urls;
 }
 
 SEXP vmatrix(SEXP naughty_urls, SEXP rows, SEXP cols) {
 
   int n = XLENGTH(naughty_urls);
-  int N = XLENGTH(rows);
+  int N = rows == R_MissingArg ? n : XLENGTH(rows);
   int P = XLENGTH(cols);
 
   SEXP out = PROTECT(allocMatrix(STRSXP, N, P));
@@ -223,7 +229,7 @@ SEXP vmatrix(SEXP naughty_urls, SEXP rows, SEXP cols) {
 
 
   for(int i = 0; i < N; i++){
-    int record = INTEGER(rows)[i] - 1;
+    int record = rows == R_MissingArg ? i : INTEGER(rows)[i] - 1;
     int start = 0, end = 0;
     int field;
     const char* naughty_url = CHAR(STRING_ELT(naughty_urls, record));
@@ -262,6 +268,13 @@ SEXP vmatrix(SEXP naughty_urls, SEXP rows, SEXP cols) {
     }
   }
 
+
+
   UNPROTECT(1);
   return out;
 }
+
+
+
+
+

@@ -1,18 +1,28 @@
-# Hello, world!
-#
-# This is an example function named 'hello' 
-# which prints 'Hello, world!'.
-#
-# You can learn more about package authoring with RStudio at:
-#
-#   http://r-pkgs.had.co.nz/
-#
-# Some useful keyboard shortcuts for package authoring:
-#
-#   Build and Reload Package:  'Ctrl + Shift + B'
-#   Check Package:             'Ctrl + Shift + E'
-#   Test Package:              'Ctrl + Shift + T'
+#' Naughty URL manipulation
+#'
+#' @name naughtyurl
+#'
+#' @docType package
+#' @useDynLib naughtyurl
+NULL
 
-hello <- function() {
-  print("Hello, world!")
-}
+#' @export
+`[.naughty` <- function(z,i,j) .Call("vmatrix", z, i, j, PACKAGE='naughtyurl')
+
+#' @export
+naughty <- function(x) UseMethod("naughty")
+
+#' @export
+naughty.default <- function(x) stop("Not a character")
+
+#' @export
+naughty.character <- function(z) invisible(.Call("do_naughty", z, PACKAGE='naughtyurl'))
+
+#' @export
+unnaughty <- function(x) UseMethod("unnaughty")
+
+#' @export
+unnaughty.default <- function(x) stop("Not a naughty object")
+
+#' @export
+unnaughty.naughty <- function(z) invisible(.Call("do_unnaughty", z, PACKAGE='naughtyurl'))
