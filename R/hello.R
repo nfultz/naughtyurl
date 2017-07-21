@@ -7,7 +7,10 @@
 NULL
 
 #' @export
-`[.naughty` <- function(z,i,j) .Call("vmatrix", z, i, j, PACKAGE='naughtyurl')
+`[.naughty` <- function(x,i=NULL,j=NULL) .Call("vmatrix", x, i, j, PACKAGE='naughtyurl')
+#' @export
+`[<-.naughty` <- function(x,i=NULL,j=NULL, value) .Call("vmatrix_set", x, i, j, value, PACKAGE='naughtyurl')
+
 
 #' @export
 naughty <- function(x) UseMethod("naughty")

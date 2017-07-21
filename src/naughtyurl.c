@@ -264,9 +264,8 @@ SEXP do_unnaughty(SEXP naughty_urls) {
 
 SEXP vmatrix(SEXP naughty_urls, SEXP rows, SEXP cols) {
 
-  int n = XLENGTH(naughty_urls);
-  int N = rows == R_MissingArg ? n : XLENGTH(rows);
-  int P = XLENGTH(cols);
+  int N = rows == R_NilValue ? XLENGTH(naughty_urls) : XLENGTH(rows);
+  int P = cols == R_NilValue ? 8: XLENGTH(cols);
 
   SEXP out = PROTECT(allocMatrix(STRSXP, N, P));
 
@@ -274,7 +273,7 @@ SEXP vmatrix(SEXP naughty_urls, SEXP rows, SEXP cols) {
 
 
   for(int i = 0; i < N; i++){
-    int record = rows == R_MissingArg ? i : INTEGER(rows)[i] - 1;
+    int record = rows == R_NilValue ? i : INTEGER(rows)[i] - 1;
     int start = 0, end = 0;
     int field;
     const char* naughty_url = CHAR(STRING_ELT(naughty_urls, record));
@@ -282,7 +281,7 @@ SEXP vmatrix(SEXP naughty_urls, SEXP rows, SEXP cols) {
     if(naughty_url[0] == 0) continue; // blank URL
 
     for(int j = 0; j < P; j++){
-      field = INTEGER(cols)[j];
+      field = cols == R_NilValue ? tag_scheme + j : INTEGER(cols)[j];
       //find beginning of field
       if(field != tag_scheme){
         while(naughty_url[start] && naughty_url[start] >= tag_skip) start++;
@@ -320,16 +319,6 @@ SEXP vmatrix(SEXP naughty_urls, SEXP rows, SEXP cols) {
 }
 
 
-SEXP vmatrix_set(SEXP naughty_urls, SEXP rows, SEXP cols, SEXP values) {
-
-  int n = XLENGTH(naughty_urls);
-  int N = rows == R_MissingArg ? n : XLENGTH(rows);
-  int P = XLENGTH(cols);
-
-
-
-  return naughty_urls;
-}
 
 
 int write_sexp_to_buff(char* buffer, SEXP el){
@@ -405,4 +394,39 @@ SEXP splice(SEXP naughty_urls, SEXP cols, SEXP values) {
   return naughty_urls;
 }
 
+SEXP vmatrix_set(SEXP naughty_urls, SEXP rows, SEXP cols, SEXP values) {
+
+  int N = rows == R_MissingArg ? XLENGTH(naughty_urls) : XLENGTH(rows);
+  int P = XLENGTH(cols);
+
+  int V = XLENGTH(values);
+
+  if(V > N*P) {
+    Rf_warning("data length is longer than LHS");
+  }else if ((N*P) % V > 0){
+    Rf_warning("data length [%d] is not a sub-multiple or multiple of the number of rows [%d]", V, N);
+
+  }
+
+  SEXP sexp = PROTECT(allocVector(STRSXP, 1));
+  SEXP vals = PROTECT(allocVector(STRSXP, P));
+
+  for(int i = 0; i< N; i++){
+    int record = rows == R_NilValue ? i : INTEGER(rows)[i] - 1;
+
+    SET_STRING_ELT(sexp, 0, STRING_ELT(naughty_urls, record));
+
+    for(int j = 0; j < P; j++){
+      SET_STRING_ELT(vals, j, STRING_ELT(values, (record + j*P) % V));
+    }
+
+    SET_STRING_ELT(naughty_urls, record, STRING_ELT(splice(sexp, cols, vals), 0));
+
+
+  }
+  UNPROTECT(2);
+
+
+  return naughty_urls;
+}
 
