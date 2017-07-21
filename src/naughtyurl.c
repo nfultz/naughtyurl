@@ -33,6 +33,7 @@ int scheme_to_nextstate(char* url, int length, int i, unsigned char *state){
       if(url[i+2] != '/'){
         // http:/bob => path = bob
         url[i+1] = tag_path;
+        *state = tag_path;
         return i + 1;
       }
       url[i++] = tag_skip; // overwrite colon with skip tag
@@ -47,13 +48,15 @@ int scheme_to_nextstate(char* url, int length, int i, unsigned char *state){
           case '@':
             url[i] = tag_user;
             *state = tag_user;
-            return (colon > 0 ? colon : j) - 1;
+            //return (colon > 0 ? colon : j) - 1;
+            return i;
           case '?':
           case '/':
           case '#':
             url[i] = tag_host;
             *state = tag_host;
-            return (colon > 0 ? colon : j) - 1;
+            //return (colon > 0 ? colon : j) - 1;
+            return i;
         }
 
       }
@@ -61,14 +64,17 @@ int scheme_to_nextstate(char* url, int length, int i, unsigned char *state){
 
   // Never found a host terminator, so all of it is host
   url[i] = tag_host;
-  return length;
-
+  //return length;
+  return i;
 }
 
 // url -> naughty urls is an in-place transform
 void naughty(char* url){
   int i, length=strlen(url);
   unsigned char state = tag_scheme;
+
+  int last_tag = 0, seen_any = 0;
+  unsigned char last_state = tag_scheme;
 
   for(i = 0; i < length; i++) {
     switch(url[i]) {
@@ -112,8 +118,25 @@ void naughty(char* url){
         }
         break;
       default:
+        seen_any = 1;
         break;
     }
+
+    if(state != last_state) {
+      if(seen_any == 0){
+        url[last_tag] = tag_skip;
+      }
+
+      last_tag = i, seen_any = 0;
+      last_state = state;
+
+
+    }
+
+  }
+
+  if(seen_any == 0){
+    url[last_tag] = tag_skip;
   }
 
 
@@ -207,9 +230,16 @@ SEXP do_unnaughty(SEXP naughty_urls) {
   char buffer[1024*1024]; //sometimes data: URLS are big
 
   for(int i = 0; i < n; i++){
-    const char* naughty_url = CHAR(STRING_ELT(naughty_urls, i));
+    SEXP el = STRING_ELT(naughty_urls, i);
+    const char* naughty_url = CHAR(el);
+    int naughty_length = LENGTH(el);
     int unnaughty_length = unnaughty(naughty_url, buffer);
-    memcpy((char *) naughty_url, buffer, unnaughty_length);
+    if(unnaughty_length <= naughty_length) {
+        memcpy((char *) naughty_url, buffer, unnaughty_length);
+    }
+    else {
+      SET_STRING_ELT(naughty_urls, i, mkChar(buffer));
+    }
   }
 
   Rf_setAttrib(naughty_urls, R_ClassSymbol, R_NilValue);
