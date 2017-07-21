@@ -13,7 +13,6 @@
 #define tag_fragment  0x17
 #define tag_skip      0x18
 
-
 int scheme_to_nextstate(char* url, int length, int i, unsigned char *state){
 
   int colon = -1;
@@ -143,6 +142,18 @@ void naughty(char* url){
 
 }
 
+int suffix(char* buffer, unsigned char state){
+  switch(state){
+    case tag_scheme:
+      *buffer = ':';
+      return 1;
+    case tag_user:
+    case tag_password:
+      *buffer = '@';
+      return 1;
+  }
+  return 0;
+}
 
 
 int unnaughty(const char* naughty_url, char* buffer){
@@ -177,18 +188,22 @@ int unnaughty(const char* naughty_url, char* buffer){
         state = tag_host;
         break;
       case tag_port:
+        j += suffix(buffer +j, state);
         buffer[j] = ':';
         state = tag_port;
         break;
       case tag_path:
+        j += suffix(buffer +j, state);
         buffer[j] = '/';
         state = tag_path;
         break;
       case tag_query:
+        j += suffix(buffer +j, state);
         buffer[j] = '?';
         state = tag_query;
         break;
       case tag_fragment:
+        j += suffix(buffer +j, state);
         buffer[i] = '#';
         state = tag_fragment;
         break;
@@ -305,6 +320,89 @@ SEXP vmatrix(SEXP naughty_urls, SEXP rows, SEXP cols) {
 }
 
 
+SEXP vmatrix_set(SEXP naughty_urls, SEXP rows, SEXP cols, SEXP values) {
 
+  int n = XLENGTH(naughty_urls);
+  int N = rows == R_MissingArg ? n : XLENGTH(rows);
+  int P = XLENGTH(cols);
+
+
+
+  return naughty_urls;
+}
+
+
+int write_sexp_to_buff(char* buffer, SEXP el){
+  const char* text = CHAR(el);
+  int len = strlen(text);
+  if(len == 0) buffer[-1] = tag_skip;
+    else
+  memcpy(buffer, text, len);
+
+  return len;
+}
+
+
+SEXP splice(SEXP naughty_urls, SEXP cols, SEXP values) {
+  char buffer[1024*1024];
+  SEXP naughty_url = STRING_ELT(naughty_urls, 0);
+  const char* text = CHAR(naughty_url);
+  int naughty_length = strlen(text);
+
+  int P = XLENGTH(cols);
+  int i = 0, j = 0, k = 0;
+
+  int* fields = INTEGER(cols);
+
+  while(text[i]){
+
+    switch(text[i]){
+      case tag_scheme:
+      case tag_user:
+      case tag_password:
+      case tag_host:
+      case tag_port:
+      case tag_path:
+      case tag_query:
+      case tag_fragment:
+        if(k < P && text[i] >= fields[k]) {
+
+          buffer[j++] = fields[k];
+          j += write_sexp_to_buff(buffer+j, STRING_ELT(values, k));
+
+
+          // if replacing, walk to the next tag;
+          if(text[i] == fields[k]){
+            do{i++;} while(text[i] >=  tag_skip);
+          }
+
+          k++;
+          continue;
+        }
+        //otherwise text[i] < fields[k] so fall through
+      default: //non state text
+        buffer[j++] = text[i++];
+
+
+    }
+  }
+
+  //Fill in fields on the end.
+  for(;k < P; k++){
+    buffer[j++] = fields[k];
+    j += write_sexp_to_buff(buffer+j, STRING_ELT(values, k));
+  }
+
+  buffer[j++] = 0;
+
+  if(j <= naughty_length){
+    memcpy((char*) text, buffer, j);
+  }
+  else {
+    SET_STRING_ELT(naughty_urls, 0, mkChar(buffer));
+  }
+
+  return naughty_urls;
+}
 
 
