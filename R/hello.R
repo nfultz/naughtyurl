@@ -11,6 +11,8 @@ NULL
 #' @export
 `[<-.naughty` <- function(x,i=NULL,j=NULL, value) .Call("vmatrix_set", x, i, j, value, PACKAGE='naughtyurl')
 
+#' @export
+url_splice <- function(x, j, v) .Call("do_splice", x, j, v, PACKAGE='naughtyurl')
 
 #' @export
 naughty <- function(x) UseMethod("naughty")

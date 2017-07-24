@@ -217,7 +217,12 @@ int unnaughty(const char* naughty_url, char* buffer){
   return j;
 }
 
-
+void naughty_class(SEXP naughty_urls){
+  SEXP nclass;
+  PROTECT(nclass = mkString("naughty"));
+  Rf_setAttrib(naughty_urls, R_ClassSymbol, nclass);
+  UNPROTECT(1);
+}
 
 SEXP do_naughty(SEXP urls) {
 
@@ -228,10 +233,7 @@ SEXP do_naughty(SEXP urls) {
     naughty((char *) url);
   }
 
-  SEXP nclass;
-  PROTECT(nclass = mkString("naughty"));
-  Rf_setAttrib(urls, R_ClassSymbol, nclass);
-  UNPROTECT(1);
+  naughty_class(urls);
 
   return urls;
 }
@@ -332,9 +334,9 @@ int write_sexp_to_buff(char* buffer, SEXP el){
 }
 
 
-SEXP splice(SEXP naughty_urls, SEXP cols, SEXP values) {
+SEXP splice(SEXP a_naughty_url, int which, SEXP cols, SEXP values) {
   char buffer[1024*1024];
-  SEXP naughty_url = STRING_ELT(naughty_urls, 0);
+  SEXP naughty_url = STRING_ELT(a_naughty_url, which);
   const char* text = CHAR(naughty_url);
   int naughty_length = strlen(text);
 
@@ -343,10 +345,17 @@ SEXP splice(SEXP naughty_urls, SEXP cols, SEXP values) {
 
   int* fields = INTEGER(cols);
 
+  //special case for scheme since it always appears first, without a tag
+  if(fields[k] == tag_scheme){
+    j += write_sexp_to_buff(buffer+j, STRING_ELT(values, k));
+    do{i++;} while(text[i] >=  tag_skip);
+    k++;
+  }
+
   while(text[i]){
 
     switch(text[i]){
-      case tag_scheme:
+      //case tag_scheme:
       case tag_user:
       case tag_password:
       case tag_host:
@@ -388,10 +397,10 @@ SEXP splice(SEXP naughty_urls, SEXP cols, SEXP values) {
     memcpy((char*) text, buffer, j);
   }
   else {
-    SET_STRING_ELT(naughty_urls, 0, mkChar(buffer));
+    SET_STRING_ELT(a_naughty_url, which, mkChar(buffer));
   }
 
-  return naughty_urls;
+  return a_naughty_url;
 }
 
 SEXP vmatrix_set(SEXP naughty_urls, SEXP rows, SEXP cols, SEXP values) {
@@ -408,25 +417,63 @@ SEXP vmatrix_set(SEXP naughty_urls, SEXP rows, SEXP cols, SEXP values) {
 
   }
 
-  SEXP sexp = PROTECT(allocVector(STRSXP, 1));
+  //SEXP sexp = PROTECT(allocVector(STRSXP, 1));
   SEXP vals = PROTECT(allocVector(STRSXP, P));
 
   for(int i = 0; i< N; i++){
     int record = rows == R_NilValue ? i : INTEGER(rows)[i] - 1;
 
-    SET_STRING_ELT(sexp, 0, STRING_ELT(naughty_urls, record));
+    //SET_STRING_ELT(sexp, 0, STRING_ELT(naughty_urls, record));
 
     for(int j = 0; j < P; j++){
       SET_STRING_ELT(vals, j, STRING_ELT(values, (record + j*P) % V));
     }
 
-    SET_STRING_ELT(naughty_urls, record, STRING_ELT(splice(sexp, cols, vals), 0));
+    splice(naughty_urls, record, cols, vals);
+    //SET_STRING_ELT(naughty_urls, record, STRING_ELT(splice(sexp, cols, vals), 0));
+
+
+  }
+  UNPROTECT(1);
+
+
+  return naughty_urls;
+}
+
+SEXP do_splice(SEXP naughty_urls, SEXP cols, SEXP values) {
+
+  int N = XLENGTH(naughty_urls);
+  int P = XLENGTH(cols);
+
+  int V = N;
+
+  for(int i = 0; i < P; i++){
+    int v= XLENGTH(VECTOR_ELT(values, i));
+    if(v > V) V = v;
+  }
+
+  //SEXP sexp = PROTECT(allocVector(STRSXP, 1));
+  SEXP out = PROTECT(allocVector(STRSXP, V));
+  SEXP vals = PROTECT(allocVector(STRSXP, P));
+
+  for(int i = 0; i< V; i++){
+
+    SET_STRING_ELT(out, i, STRING_ELT(naughty_urls, i % N));
+
+    for(int j = 0; j < P; j++){
+      SEXP sexp = VECTOR_ELT(values, j);
+      SET_STRING_ELT(vals, j, STRING_ELT(sexp, i % XLENGTH(sexp)));
+    }
+
+    splice(out, i, cols, vals);
+    //SET_STRING_ELT(naughty_urls, record, STRING_ELT(splice(sexp, cols, vals), 0));
 
 
   }
   UNPROTECT(2);
 
+  naughty_class(out);
 
-  return naughty_urls;
+  return out;
 }
 
