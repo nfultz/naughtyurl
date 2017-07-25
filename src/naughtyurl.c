@@ -405,7 +405,7 @@ SEXP splice(SEXP a_naughty_url, int which, SEXP cols, SEXP values) {
 
 SEXP vmatrix_set(SEXP naughty_urls, SEXP rows, SEXP cols, SEXP values) {
 
-  int N = rows == R_MissingArg ? XLENGTH(naughty_urls) : XLENGTH(rows);
+  int N = rows == R_NilValue ? XLENGTH(naughty_urls) : XLENGTH(rows);
   int P = XLENGTH(cols);
 
   int V = XLENGTH(values);
