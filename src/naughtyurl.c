@@ -77,6 +77,16 @@ void naughty(char* url){
 
   for(i = 0; i < length; i++) {
     switch(url[i]) {
+      case tag_scheme:
+      case tag_user:
+      case tag_password:
+      case tag_host:
+      case tag_port:
+      case tag_path:
+      case tag_query:
+      case tag_fragment:
+        // already naughty, stop processing
+        return;
       case ':':
         switch(state){
           case tag_scheme:
