@@ -1,12 +1,13 @@
 Package: naughtyurl
 Type: Package
-Title: What the Package Does (Title Case)
+Title: In-Place URL Manipulation
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: Neal Fultz
+Maintainer: Neal Fultz <nfultz@gmail.com>
+Description: For large-scale operations on URLs using small-scale computing
+    resources, it can be more efficient to parse, extract, and edit the URLs
+    in place.
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
 NeedsCompilation: true
